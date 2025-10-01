@@ -1,1 +1,1472 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transparency statement builder</title>
+
+  <style>
+    body {
+  font-family: system-ui, sans-serif;
+  padding: 16px;
+  padding-bottom: 300px;  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: #efefef;
+  bottom: max(2%, env(safe-area-inset-bottom));
+}
+
+h1 { color: #071f35; }
+h3, h5 { margin: 12px 0; }
+
+/* Buttons */
+.button-group { pointer-events: auto; }
+button {
+  padding: 10px 12px;
+  margin: 6px;
+  border: 1px solid #999;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #fff;
+  transition: background 0.2s, outline 0.2s;
+}
+button:hover { background: #2e5269; }
+button.active {
+  background: #173f59;
+  color: #ccaa52;
+}
+
+/* Sections and rows */
+.section {
+  margin: 12px 0;
+  width: min(720px, 90vw);
+  transition: max-height 0.22s ease, opacity 0.18s ease, margin 0.18s ease;
+  max-height: 2000px;
+  opacity: 1;
+}
+.section.hidden {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hidden:not(.section) { display: none; }
+
+.section, .row {
+  width: min(720px, 90vw);
+  margin-inline: auto;
+}
+.row { justify-content: flex-start; gap: 12px; }
+.row > textarea, .row > input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Inputs */
+input[type="text"], textarea {
+  padding: 8px;
+  border: 1px solid #999;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.95em;
+}
+textarea { min-height: 2.2em; resize: none; line-height: 1.4; }
+
+/* Custom focus color */
+input[type="text"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: #c5533c;      
+}
+
+/* Inline input with prefix */
+.input-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  border: 1px solid #999;
+  border-radius: 8px;
+  width: 100%;
+  background: #fff;
+}
+.input-inline .prefix {
+  flex: 0 0 auto;
+  max-width: 45%;
+  padding: 8px;
+  border-right: 1px solid #999;
+  border-radius: 8px 0 0 8px;
+  background: #f7f7f7;
+  white-space: normal;
+}
+.input-inline textarea {
+  flex: 1 1 auto;
+  border: none;
+  outline: none;
+  padding: 8px;
+  min-height: 84px;
+  border-radius: 4px 8px 8px 4px;
+  resize: none;
+}
+
+/* ===== Floating output panel ===== */
+#outputPanel {
+  position: fixed;
+  bottom: 2%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(900px, 92vw);
+  background: #fafafa;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  z-index: 9999;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.12);
+}
+
+/* Header: small title + Restart button on the same row */
+#outputHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 8px 8px 0 0;
+}
+#outputHeader h2 {
+  margin: 0;
+  font-size: 0.98em;
+  font-weight: 600;
+}
+
+/* Restart button */
+#restartBtn {
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid #999;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+  transition: background 0.2s, outline 0.2s;
+  font-size: 0.9em;
+}
+#restartBtn:hover { background: #c5533c; color: #fff; }
+
+/* Paragraph content */
+#output {
+  padding: 12px;
+  min-height: 2.2em;
+  max-height: 26vh;
+  overflow-y: auto;
+  text-align: left;
+  font-size: 0.95em;
+  background: #fafafa;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Small screens */
+@media (max-width: 480px) {
+  body { padding-bottom: 180px; }
+  #outputHeader h2 { font-size: 0.92em; }
+  #output { max-height: 32vh; }
+}
+
+.custom-text {
+  color: #94450b;
+}
+  </style>
+
+  
+</head>
+<body>
+  <h1>Transparency statement builder</h1>
+
+<h5>When did you upload your study's registration?</h5>
+<div class="row button-group">
+  <button data-id="yes2">Before data collection</button>
+  <button data-id="no2">After data collection started</button>
+  <button data-id="NA">We did not register our study at all</button>
+</div>
+
+<div id="regContentsSec" class="section hidden">
+  <h5>Select all the bits included in your registration</h5>
+  <div class="row button-group" data-mode="multi">
+    <button data-id="Hypotheses">Hypotheses</button>
+    <button data-id="analysis">Analysis plan</button>
+    <button data-id="Materials">Materials</button>
+  </div>
+</div>
+
+<div id="regLinkSec" class="section hidden">
+  <h5>Where can we find your registration?</h5>
+  <div class="row">
+    <input
+      id="preregLink_input"
+      type="text"
+      placeholder="Registration link…"
+      style="margin-right: 8px"
+    />
+  </div>
+</div>
+
+<div id="regReasonsSec" class="section hidden">
+  <h5>Please indicate any reasons for not preregistering:</h5>
+  <div id="regOtherWrap" class="row">
+    <textarea
+      id="reg_reason_other"
+      rows="3"
+      placeholder="Other reason…"
+    ></textarea>
+  </div>
+</div>
+
+<h5>Did you analyse data in your study?</h5>
+<div class="row button-group" data-mode="multi">
+  <button data-id="data_primary">Yes, primary data</button>
+  <button data-id="data_secondary_author">
+    Yes, secondary (from an author)
+  </button>
+  <button data-id="data_secondary_third">Yes, secondary (third party)</button>
+  <button data-id="data_none">No</button>
+</div>
+
+<div id="dataAvailSec" class="section hidden">
+  <h5>Have you made any of your data publicly available?</h5>
+  <div class="row button-group">
+    <button data-id="data_all_public">Yes, entire dataset</button>
+    <button data-id="data_some_public">Some data</button>
+    <button data-id="data_on_request">On request</button>
+    <button data-id="data_not_public">Not publicly available</button>
+  </div>
+</div>
+
+<div id="dataLinkSec" class="section hidden">
+  <h5>Please provide the access link:</h5>
+  <div class="row">
+    <input
+      id="dataLink_input"
+      type="text"
+      placeholder="Data link…"
+      style="margin-right: 8px"
+    />
+  </div>
+</div>
+
+<div id="dataReasonsSec" class="section hidden">
+  <h5>
+    If some/all of your data are not publicly available, please provide an
+    explanation:
+  </h5>
+  <div class="row button-group" data-mode="multi">
+    <button data-id="r_consent">Consent form lacked info</button>
+    <button data-id="r_ethics">Ethics board restriction</button>
+    <button data-id="r_sensitive">Sensitive identifying info</button>
+    <button data-id="r_secondary_no_ok">Secondary source restriction</button>
+    <button data-id="r_other">Other</button>
+  </div>
+
+<div id="dataSensitiveWrap" class="row hidden">
+  <textarea
+    id="data_sensitive_why"
+    rows="3"
+    placeholder="describe the sensitive information that could not be redacted…"
+  ></textarea>
+</div>
+
+  <div id="dataOtherWrap" class="row hidden">
+    <textarea id="data_reason_other" rows="3"></textarea>
+  </div>
+</div>
+
+<h5>Which of the following materials have you provided immediate access to?</h5>
+<div class="row button-group" data-mode="multi">
+  <button data-id="mat_all_measures">All measures</button>
+  <button data-id="mat_some_measures">Some measures</button>
+  <button data-id="mat_consent">Consent forms</button>
+  <button data-id="mat_all_some_stimuli">Some stimuli</button>
+  <button data-id="mat_all_stimuli">All stimuli</button>
+  <button data-id="mat_alt_desc">
+    Descriptions/photos/videos of physical materials (e.g., photos of the physical wood block puzzle administered)
+  </button>
+  <button data-id="mat_other">Other</button>
+</div>
+
+<div id="materials_other_wrap" class="row hidden">
+  <textarea
+    id="materials_other"
+    rows="3"
+    placeholder="Describe the other type of material you made available…"
+  ></textarea>
+</div>
+
+<div id="materials_which_wrap" class="row hidden">
+  <textarea
+    id="materials_which"
+    rows="3"
+    placeholder="Which of your materials could not be digitally distributed?"
+  ></textarea>
+</div>
+
+<div id="digiSec" class="section hidden">
+  <h5>Describe how you digitally distributed it:</h5>
+  <div class="row button-group" data-mode="multi">
+    <button data-id="digi_photos">Photos</button>
+    <button data-id="digi_vids">Videos</button>
+    <button data-id="digi_audio">Audio recordings</button>
+    <button data-id="digi_text">Textual descriptions</button>
+    <button data-id="digi_other">Other</button>
+  </div>
+
+  <div id="digi_other_wrap" class="row hidden">
+    <textarea
+      id="digi_other"
+      rows="3"
+      placeholder="Other..."
+    ></textarea>
+  </div>
+</div>
+
+<div id="materialsLinkSec" class="section hidden">
+  <h5>Please provide the access link for materials:</h5>
+  <div class="row">
+    <input
+      id="materialsLink_input"
+      type="text"
+      placeholder="Materials link…"
+      style="margin-right: 8px"
+    />
+  </div>
+</div>
+
+<div id="materialsMissingReasons" class="section hidden">
+  <h5>If any of the three core materials are not available, state why:</h5>
+  <div id="measures_unavail_wrap" class="row hidden">
+    <textarea id="measures_unavail_why" rows="3"
+      placeholder="Measures were not made available because…"></textarea>
+  </div>
+  <div id="consent_unavail_wrap" class="row hidden">
+    <textarea id="consent_unavail_why" rows="3"
+      placeholder="Consent forms were not made available because…"></textarea>
+  </div>
+  <div id="stimuli_unavail_wrap" class="row hidden">
+    <textarea id="stimuli_unavail_why" rows="3"
+      placeholder="Stimuli were not made available because…"></textarea>
+  </div>
+</div>
+
+  <div id="materials_danger_wrap" class="row hidden">
+    <h5>
+    Describe the danger that could be caused by making your materials available:
+  </h5>
+    <textarea
+      id="materials_danger_why"
+      rows="3"
+      placeholder="describe the specific danger…"
+    ></textarea>
+  </div>
+</div>
+
+<h5>Which analysis scripts have you provided?</h5>
+<div class="row button-group" data-mode="multi">
+  <button data-id="as_code">Complete code file</button>
+  <button data-id="as_qual_desc">Qualitative analysis description</button>
+  <button data-id="as_transcript_example">
+    Example an annotated transcription during the analysis
+  </button>
+  <button data-id="as_photos">Photos of analysis process</button>
+  <button data-id="as_none">No analysis scripts</button>
+</div>
+
+<div id="analysisLinkSec" class="section hidden">
+  <h5>If analysis scripts are available, provide the access link:</h5>
+  <div class="row">
+    <input
+      id="analysisLink_input"
+      type="text"
+      placeholder="Analysis scripts link…"
+      style="margin-right: 8px"
+    />
+  </div>
+</div>
+
+<div id="analysisReasonsSec" class="section hidden">
+  <h5>Please indicate reasons for not sharing scripts:</h5>
+  <div class="row button-group" data-mode="multi">
+    <button data-id="as_r_sensitive">Sensitive info</button>
+    <button data-id="as_r_other">Other</button>
+  </div>
+
+  <div id="analysisSensitiveWrap" class="row hidden">
+    <textarea id="analysis_sensitive_why"
+      placeholder="describe the sensitive information that could not be redacted…"></textarea>
+  </div>
+
+  <div id="analysisOtherWrap" class="row hidden">
+    <textarea id="analysis_reason_other" placeholder="Other reason…"></textarea>
+  </div>
+</div>
+
+<h5>Which reporting guidelines did you use?</h5>
+<div class="row button-group" data-mode="multi">
+  <button data-id="CONSORT">CONSORT</button>
+  <button data-id="STROBE">STROBE</button>
+  <button data-id="PRISMA">PRISMA</button>
+  <button data-id="COREQ">COREQ</button>
+  <button data-id="RG_OTHER">Other guideline</button>
+  <button data-id="RG_NA">Reporting guideline not used</button>
+</div>
+
+<div id="rgOtherNameWrap" class="row hidden">
+  <textarea id="rg_other_name" rows="2" placeholder="Name the reporting guideline…"></textarea>
+</div>
+
+<div id="rgReasonsSec" class="section hidden">
+  <h5>Please indicate any reasons for not using a guideline:</h5>
+  <div class="row button-group" data-mode="multi"></div>
+  <div id="rgOtherWrap" class="row">
+    <textarea id="rg_reason_other" rows="3" placeholder="Other reason…"></textarea>
+  </div>
+</div>
+
+<h5>Did you use generative AI during the research or manuscript stages?</h5>
+<div id="aiUseSec" class="row button-group" data-mode="multi">
+  <button data-id="yes_research_ai">Yes, during research</button>
+  <button data-id="yes_manuscript_ai">Yes, during writing</button>
+  <button data-id="no_AI">No AI used</button>
+</div>
+
+<div id="aiDetailsSec" class="section hidden">
+  <h5>Briefly describe how AI was used:</h5>
+  <div class="row">
+    <textarea id="ai_details" rows="4"
+      placeholder="e.g., literature triage, code review, language polishing, figure suggestions…"></textarea>
+  </div>
+</div>
+
+<div id="aiExplainSec" class="section hidden">
+  <h5>Please describe how generative artificial intelligence technologies were used in your study:</h5>
+  <div class="row button-group" data-mode="multi"></div>
+  <div id="rgOtherWrap" class="row">
+    <textarea id="rg_reason_other" rows="3" placeholder="Other reason…"></textarea>
+  </div>
+</div>
+
+<div id="outputPanel">
+  <div id="outputHeader">
+    <h2>Your statement</h2>
+    <button id="restartBtn">Restart</button>
+  </div>
+  <div id="output"></div>
+</div>
+
+  <script>
+    const outEl = document.getElementById("output");
+const active = new Set();
+
+const PREREG_IDS = ["Hypotheses", "analysis", "Materials"];
+const PREREG_LABEL = {
+  Hypotheses: "hypotheses",
+  analysis: "analysis plan",
+  Materials: "materials",
+};
+
+const REG_REASON_IDS = ["reg_r_other"]; // kept for completeness, but no button used
+const REG_REASON_LABEL = {
+  reg_r_other: null,
+};
+
+const DATA_REASON_IDS = [
+  "r_consent",
+  "r_ethics",
+  "r_sensitive",
+  "r_secondary_no_ok",
+  "r_other",
+];
+const DATA_REASON_LABEL = {
+  r_consent: "the consent form lacked data-sharing information",
+  r_ethics: "our ethics board did not approve its public release",
+  r_sensitive:
+    "it contains highly sensitive identifying information that could not be anonymised or redacted",
+  r_secondary_no_ok:
+    "the original owners of the secondary data set did not approve of its public release",
+  r_other: null,
+};
+
+const MAT_IDS = [
+  "mat_all_measures",
+  "mat_some_measures",
+  "mat_consent",
+  "mat_all_some_stimuli",
+  "mat_all_stimuli",
+  "mat_alt_desc",
+  "mat_other",
+];
+const MAT_LABEL = {
+  mat_all_measures: "all measures",
+  mat_some_measures: "some measures",
+  mat_consent: "consent forms",
+  mat_all_some_stimuli: "some stimuli",
+  mat_all_stimuli: "all stimuli",
+  mat_alt_desc:
+    "digital versions of physical materials",
+  mat_other: null,
+};
+
+
+const DIGI_IDS = ["digi_photos", "digi_vids", "digi_audio", "digi_text", "digi_other"];
+const DIGI_LABEL = {
+  digi_photos: "photos",
+  digi_vids: "videos",
+  digi_audio: "audio recordings",
+  digi_text: "textual descriptions",
+  digi_other: null,
+};
+
+
+
+const MAT_REASON_IDS = ["mat_r_copyright", "mat_r_danger", "mat_r_other"];
+const MAT_REASON_LABEL = {
+  mat_r_copyright: "copyright restrictions",
+  mat_r_danger: "potential harm if accessed by non-psychologists",
+  mat_r_other: null,
+};
+
+const AS_IDS = [
+  "as_code",
+  "as_qual_desc",
+  "as_transcript_example",
+  "as_photos",
+];
+const AS_LABEL = {
+  as_code: "the complete syntax/code used to analyse these findings",
+  as_qual_desc:
+    "a detailed description of the qualitative analytic steps used in this study",
+  as_transcript_example: "an example of the transcription analysis process",
+  as_photos: "photos of the qualitative analysis process",
+};
+const AS_REASON_IDS = ["as_r_sensitive", "as_r_other"];
+const AS_REASON_LABEL = {
+  as_r_sensitive: "they contain non-redactable, sensitive information",
+  as_r_other: null,
+};
+
+const RG_IDS = ["CONSORT", "STROBE", "PRISMA", "COREQ", "RG_OTHER"];
+const RG_LABEL = { CONSORT:"CONSORT", STROBE:"STROBE", PRISMA:"PRISMA", COREQ:"COREQ", RG_OTHER: null };
+
+// ---- helpers for lists and user-typed highlighting ----
+function listEN(a) {
+  if (a.length === 1) return a[0];
+  if (a.length === 2) return `${a[0]}, and ${a[1]}`;
+  return `${a.slice(0, -1).join(", ")}, and ${a[a.length - 1]}`;
+}
+function txt(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : "";
+}
+function setSection(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle("hidden", !show);
+}
+function hasAll(ids) {
+  return ids.every((id) => active.has(id));
+}
+
+// HTML-escape and highlight user-entered text
+function escapeHtml(s) {
+  return s.replace(
+    /[&<>"'`=\/]/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+        "`": "&#96;",
+        "=": "&#61;",
+        "/": "&#47;",
+      })[c],
+  );
+}
+function ct(s) {
+  return `<span class="custom-text">${escapeHtml(s)}</span>`;
+}
+
+function updateVisibility() {
+  // prereg
+  const regNo = active.has("NA");
+  const regYes = active.has("yes2") || active.has("no2");
+  const preregAll = hasAll(PREREG_IDS);
+
+  setSection("regContentsSec", regYes && !regNo);
+  setSection("regLinkSec", regYes && !regNo);
+  // Show textbox if no prereg OR prereg missing any content
+  setSection("regReasonsSec", regNo || (regYes && !preregAll));
+  // regOtherWrap is the textarea container; mirror the section
+  setSection("regOtherWrap", regNo || (regYes && !preregAll));
+
+  // Clear textbox when all prereg items are selected
+  if (regYes && preregAll) {
+    const el = document.getElementById("reg_reason_other");
+    if (el) el.value = "";
+  }
+
+  // data
+  const analysed =
+    active.has("data_primary") ||
+    active.has("data_secondary_author") ||
+    active.has("data_secondary_third");
+  const noAnalysed = active.has("data_none");
+  const isAllPublic = active.has("data_all_public");
+  const isSomePublic = active.has("data_some_public");
+  const isOnRequest = active.has("data_on_request");
+  const isNotPublic = active.has("data_not_public");
+  setSection("dataAvailSec", analysed && !noAnalysed);
+  setSection(
+    "dataLinkSec",
+    analysed && !noAnalysed && (isAllPublic || isSomePublic),
+  );
+  setSection("dataReasonsSec", isSomePublic || isOnRequest || isNotPublic);
+  setSection(
+    "dataOtherWrap",
+    (isSomePublic || isOnRequest || isNotPublic) && active.has("r_other"),
+  );
+  setSection("dataSensitiveWrap", active.has("r_sensitive"));
+
+  // materials
+setSection("materials_other_wrap", active.has("mat_other"));
+setSection("materials_which_wrap", active.has("mat_alt_desc"));
+setSection("digi_other_wrap", active.has("digi_other"));
+setSection("digiSec", active.has("mat_alt_desc"));
+
+const hasAnyMat = MAT_IDS.some((id) => active.has(id));
+const hasAltDesc = active.has("mat_alt_desc");
+setSection("materialsLinkSec", hasAnyMat || hasAltDesc);
+
+// core selections and “some” flags
+const coreSelected =
+  active.has("mat_all_measures") ||
+  active.has("mat_consent") ||
+  active.has("mat_all_stimuli");
+
+const someSelected =
+  active.has("mat_some_measures") ||
+  active.has("mat_all_some_stimuli");
+
+// show reasons UI if a “some” option is chosen OR none of the three core items are selected
+const showMatReasons = someSelected || !coreSelected;
+setSection("materialsReasonsSec", showMatReasons);
+setSection("materials_danger_wrap", showMatReasons && active.has("mat_r_danger"));
+setSection("materials_reason_other_wrap", showMatReasons && active.has("mat_r_other"));
+
+// core “missing” explanations only if any materials are being worked with
+const measuresMissing = !active.has("mat_all_measures");
+const consentMissing  = !active.has("mat_consent");
+const stimuliMissing  = !active.has("mat_all_stimuli");
+
+const showMissing =
+  hasAnyMat && (measuresMissing || consentMissing || stimuliMissing);
+
+setSection("materialsMissingReasons", showMissing);
+setSection("measures_unavail_wrap", showMissing && measuresMissing);
+setSection("consent_unavail_wrap",  showMissing && consentMissing);
+setSection("stimuli_unavail_wrap",  showMissing && stimuliMissing);
+
+  // analysis scripts
+  const anyAS =
+    active.has("as_code") ||
+    active.has("as_qual_desc") ||
+    active.has("as_transcript_example") ||
+    active.has("as_photos");
+  const asNone = active.has("as_none");
+  setSection("analysisLinkSec", anyAS && !asNone);
+  setSection(
+    "analysisReasonsSec",
+    asNone || active.has("as_r_sensitive") || active.has("as_r_other"),
+  );
+  setSection(
+    "analysisOtherWrap",
+    (asNone || active.has("as_r_other") || active.has("as_r_sensitive")) &&
+      active.has("as_r_other"),
+  );
+  setSection("analysisSensitiveWrap", active.has("as_r_sensitive"));
+
+  // reporting guidelines
+  
+  const anyRG = RG_IDS.some((id) => active.has(id));
+  const rgNA = active.has("RG_NA");
+  setSection("rgReasonsSec", rgNA && !anyRG);
+  setSection("rgOtherNameWrap", active.has("RG_OTHER"));
+
+  // generative AI
+  const aiYes =
+    active.has("yes_research_ai") || active.has("yes_manuscript_ai");
+  const aiNo = active.has("no_AI");
+  setSection("aiDetailsSec", aiYes && !aiNo);
+}
+
+function render() {
+  const parts = [];
+
+  // preregistration
+  const na = active.has("NA");
+  const pre = active.has("yes2");
+  const post = active.has("no2");
+
+  if (na) {
+    // Not preregistered
+    const reason = txt("reg_reason_other");
+    if (reason) {
+      parts.push(`This study was not preregistered because ${ct(reason)}.`);
+    } else {
+      parts.push("This study was not preregistered.");
+    }
+  } else if (pre) {
+    parts.push("This study was preregistered prior to data collection. ");
+  } else if (post) {
+    parts.push("This study was registered after data collection had started. ");
+  }
+
+  // not all preregistered
+
+  if (!na && (pre || post)) {
+    const items = PREREG_IDS.filter((id) => active.has(id)).map(
+      (id) => PREREG_LABEL[id],
+    );
+    if (items.length) {
+      const noun = pre ? "preregistration" : "registration";
+      parts.push(`The ${noun} included the ${listEN(items)}`);
+    }
+    const link = txt("preregLink_input");
+    if (link) {
+      parts.push(
+        `(accessed at <span class="custom-text">${escapeHtml(link)}</span>).`,
+      );
+    }
+    // If prereg incomplete, always emit statement
+    if (!hasAll(PREREG_IDS)) {
+      const missing = PREREG_IDS.filter((id) => !active.has(id)).map(
+        (id) => PREREG_LABEL[id],
+      );
+
+      if (missing.length) {
+        let s = `We did not preregister our ${listEN(missing)} because`;
+        const t = txt("reg_reason_other");
+        if (t) {
+          s += ` ${ct(t)}.`;
+        }
+        parts.push(s);
+      }
+    }
+  }
+  // data
+  const dataTypes = [];
+  if (active.has("data_primary")) dataTypes.push("primary data");
+  if (active.has("data_secondary_author"))
+    dataTypes.push(
+      "a secondary data set sourced from one or more author(s) of this study",
+    );
+  if (active.has("data_secondary_third"))
+    dataTypes.push("secondary data sourced from a third party");
+  if (active.has("data_none") && dataTypes.length === 0)
+    parts.push("We did not analyse any data.");
+  else if (dataTypes.length > 0)
+    parts.push(`We analysed ${listEN(dataTypes)}.`);
+  const isAllPublic = active.has("data_all_public");
+  const isSomePublic = active.has("data_some_public");
+  const isOnRequest = active.has("data_on_request");
+  const isNotPublic = active.has("data_not_public");
+
+  // Availability + link
+  let availability = null;
+  if (isAllPublic) availability = "The entire dataset is publicly available";
+  else if (isSomePublic)
+    availability = "Some of the data are publicly available";
+  else if (isOnRequest) availability = "The data are available only on request because";
+  else if (isNotPublic) availability = "The data are not publicly available";
+
+  if (availability) {
+    const dataLink = txt("dataLink_input");
+    if ((isAllPublic || isSomePublic) && dataLink) {
+      parts.push(
+        `${availability} (accessed at <span class="custom-text">${escapeHtml(dataLink)}</span>).`,
+      );
+    } else {
+      parts.push(`${availability}.`);
+    }
+  }
+
+  if (isSomePublic || isOnRequest || isNotPublic) {
+    const reasons = [];
+    DATA_REASON_IDS.forEach((rid) => {
+      if (rid === "r_other") {
+        const t = txt("data_reason_other");
+        if (active.has("r_other") && t) reasons.push(ct(t));
+      } else if (rid === "r_sensitive") {
+        if (active.has("r_sensitive")) {
+          const why = txt("data_sensitive_why");
+          const label =
+            DATA_REASON_LABEL[rid] + (why ? ` (specifically, ${ct(why)})` : "");
+          reasons.push(label);
+        }
+      } else if (active.has(rid)) {
+        reasons.push(DATA_REASON_LABEL[rid]);
+      }
+    });
+
+    if (reasons.length) {
+      if (isNotPublic) {
+        parts.push(`This was because ${listEN(reasons)}.`);
+      } else if (isSomePublic) {
+        parts.push(
+          `The data were not made entirely available because ${listEN(reasons)}.`,
+        );
+      } else if (isOnRequest) {
+        parts.push(
+          ` ${listEN(reasons)}.`,
+        );
+      }
+    }
+  }
+
+// materials
+const matsAny = MAT_IDS.some((x) => active.has(x));
+const measuresMissing = !active.has("mat_all_measures");
+const consentMissing  = !active.has("mat_consent");
+const stimuliMissing  = !active.has("mat_all_stimuli");
+
+const hasAllKeyMats =
+  active.has("mat_all_measures") &&
+  active.has("mat_consent") &&
+  active.has("mat_all_stimuli");
+
+const materialsLink = txt("materialsLink_input");
+
+
+
+
+
+// Build selected mats and alt-desc holder without emitting yet
+const mats = [];
+let matAltDesc = null;
+
+MAT_IDS.forEach((mid) => {
+  if (!active.has(mid)) return;
+
+  if (mid === "mat_other") {
+    const t = txt("materials_other");
+    if (t) mats.push(ct(t));
+    return;
+  }
+
+  if (mid === "mat_alt_desc") {
+    const which = txt("materials_which");
+    matAltDesc = which ? ct(which) : null;
+    return;
+  }
+
+  mats.push(MAT_LABEL[mid]);
+});
+
+// 1) Unavailability reasons (global)
+const mrs = [];
+if (active.has("mat_r_copyright")) mrs.push("copyright restrictions");
+if (active.has("mat_r_danger")) {
+  const why = txt("materials_danger_why");
+  mrs.push(
+    why
+      ? `the risk of ${ct(why)} if accessed by non-psychological researchers or practitioners`
+      : `potential danger if misused`
+  );
+}
+if (active.has("mat_r_other")) {
+  const t = txt("materials_reason_other");
+  if (t) mrs.push(ct(t));
+}
+if (mrs.length) {
+  parts.push(`Materials are not made completely available because ${listEN(mrs)}.`);
+}
+
+// 2) Missing notes per core item
+if (matsAny && (measuresMissing || consentMissing || stimuliMissing)) {
+  if (measuresMissing) {
+    const why = txt("measures_unavail_why");
+    const prefix = active.has("mat_some_measures")
+      ? "Some measures were not made available because"
+      : "Measures were not made available because";
+    parts.push(why ? `${prefix} ${ct(why)}.` : `${prefix}.`);
+  }
+  if (consentMissing) {
+    const why = txt("consent_unavail_why");
+    parts.push(why
+      ? `Consent forms were not made available because ${ct(why)}.`
+      : `Consent forms were not made available.`);
+  }
+  if (stimuliMissing) {
+    const why = txt("stimuli_unavail_why");
+    const prefix = active.has("mat_all_some_stimuli")
+      ? "Some stimuli were not made available"
+      : "Stimuli were not made available";
+    parts.push(why ? `${prefix} because ${ct(why)}.` : `${prefix}.`);
+  }
+}
+
+// 3) Availability sentence (+ link if present)
+if (hasAllKeyMats) {
+  parts.push(
+    materialsLink
+      ? `All materials, including measures, consent forms, and stimuli, are made available at <span class="custom-text">${escapeHtml(materialsLink)}</span>.`
+      : `All materials, including measures, consent forms, and stimuli, are made available.`
+  );
+} else if (mats.length) {
+  parts.push(
+    `Immediate access is provided to ${listEN(mats)}${
+      materialsLink
+        ? ` (accessed at <span class="custom-text">${escapeHtml(materialsLink)}</span>).`
+        : `.`
+    }`
+  );
+}
+
+// 4) Digital distribution sentence (+ link)
+if (matAltDesc) {
+  const digi = [];
+  DIGI_IDS.forEach((did) => {
+    if (!active.has(did)) return;
+    if (did === "digi_other") {
+      const t = txt("digi_other");
+      if (t) digi.push(ct(t));
+    } else {
+      digi.push(DIGI_LABEL[did]);
+    }
+  });
+
+  const linkSeg = materialsLink
+    ? ` (accessed at <span class="custom-text">${escapeHtml(materialsLink)}</span>).`
+    : `.`;
+
+  if (digi.length) {
+    parts.push(
+      `We provided digital versions of ${matAltDesc} in the form of ${listEN(digi)}${linkSeg}`
+    );
+  } else {
+    parts.push(`We provided digital versions of ${matAltDesc}${linkSeg}`);
+  }
+}
+  // analysis scripts
+  const as = [];
+  AS_IDS.forEach((id) => {
+    if (active.has(id)) as.push(AS_LABEL[id]);
+  });
+
+  const asLink = txt("analysisLink_input");
+  if (as.length && asLink) {
+    parts.push(
+      `The following link contains ${listEN(as)} (accessed at <span class="custom-text">${asLink}</span>).`,
+    );
+  }
+
+  if (
+    active.has("as_r_sensitive") ||
+    active.has("as_r_other") ||
+    active.has("as_none")
+  ) {
+    const ars = [];
+    AS_REASON_IDS.forEach((id) => {
+      if (!active.has(id)) return;
+
+      if (id === "as_r_other") {
+        const t = txt("analysis_reason_other");
+        if (t) ars.push(ct(t));
+        return;
+      }
+
+      if (id === "as_r_sensitive") {
+        const why = txt("analysis_sensitive_why");
+        const label =
+          AS_REASON_LABEL[id] + (why ? ` (specifically, ${ct(why)})` : "");
+        ars.push(label);
+        return;
+      }
+    });
+
+    if (ars.length) {
+      parts.push(
+        `Analysis materials not fully accessible because ${listEN(ars)}.`,
+      );
+    }
+  }
+
+  // reporting guidelines
+const selectedRG = RG_IDS
+  .filter((id) => active.has(id))
+  .map((id) => {
+    if (id === "RG_OTHER") {
+      const t = txt("rg_other_name");
+      return t ? ct(t) : "another reporting guideline";
+    }
+    return RG_LABEL[id];
+  });
+
+const rgNA = active.has("RG_NA");
+
+if (selectedRG.length) {
+  parts.push(
+    selectedRG.length === 1
+      ? `This article adhered to the ${selectedRG[0]} reporting guideline.`
+      : `This article adhered to the ${listEN(selectedRG)} reporting guidelines.`
+  );
+} else if (rgNA) {
+  parts.push("This article does not adhere to a reporting guideline because");
+  const rgr = [];
+  const t = txt("rg_reason_other");
+  if (t) rgr.push(ct(t));
+  if (rgr.length) parts.push(`${listEN(rgr)}.`);
+}
+
+  // generative AI
+  const aiUsed = [];
+  if (active.has("yes_research_ai")) aiUsed.push("the research stage");
+  if (active.has("yes_manuscript_ai")) aiUsed.push("the manuscript stage");
+  const aiNo = active.has("no_AI");
+
+  if (aiNo && aiUsed.length === 0) {
+    parts.push("No generative AI technologies were used at any stage.");
+  } else if (aiUsed.length > 0) {
+    const details = txt("ai_details");
+    const base = `Generative AI technologies were used during ${listEN(aiUsed)} to help us.`;
+    parts.push(details ? `${base} Specifically, in the ${ct(details)}.` : base);
+  }
+
+  // render as HTML to preserve red spans
+  outEl.innerHTML = parts.join(" ");
+  updateVisibility();
+}
+
+// button groups
+document.querySelectorAll(".button-group").forEach((group) => {
+  const isMulti = group.dataset.mode === "multi";
+  group.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-id]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+
+    if (isMulti) {
+      if (active.has(id)) {
+        active.delete(id);
+        btn.classList.remove("active");
+      } else {
+        active.add(id);
+        btn.classList.add("active");
+      }
+
+      // mutually exclusive data_none vs any data type
+      if (
+        [
+          "data_primary",
+          "data_secondary_author",
+          "data_secondary_third",
+          "data_none",
+        ].includes(id)
+      ) {
+        if (id === "data_none") {
+          [
+            "data_primary",
+            "data_secondary_author",
+            "data_secondary_third",
+          ].forEach((x) => {
+            active.delete(x);
+            const b = document.querySelector(`button[data-id="${x}"]`);
+            if (b) b.classList.remove("active");
+          });
+        } else {
+          active.delete("data_none");
+          const b = document.querySelector('button[data-id="data_none"]');
+          if (b) b.classList.remove("active");
+        }
+      }
+
+// mutually exclusive RG_NA vs any RG
+if (["RG_NA", ...RG_IDS].includes(id)) {
+  if (id === "RG_NA") {
+    RG_IDS.forEach((x) => {
+      active.delete(x);
+      const b = document.querySelector(`button[data-id="${x}"]`);
+      if (b) b.classList.remove("active");
+    });
+  } else {
+    active.delete("RG_NA");
+    const b = document.querySelector('button[data-id="RG_NA"]');
+    if (b) b.classList.remove("active");
+  }
+}
+
+      // clear materials inputs when toggled off
+      if (
+        [
+          "mat_some_measures",
+          "mat_all_some_stimuli",
+          "mat_alt_desc",
+          "mat_other",
+          "mat_r_other",
+          "mat_r_danger",
+        ].includes(id)
+      ) {
+        if (!active.has("mat_other")) {
+          const el = document.getElementById("materials_other");
+          if (el) el.value = "";
+        }
+        if (!active.has("mat_r_other")) {
+          const el = document.getElementById("materials_reason_other");
+          if (el) el.value = "";
+        }
+        if (!active.has("mat_r_danger")) {
+          const el = document.getElementById("materials_danger_why");
+          if (el) el.value = "";
+        }
+      }
+    } else {
+      // single-select group
+      group.querySelectorAll("button[data-id]").forEach((b) => {
+        active.delete(b.dataset.id);
+        b.classList.remove("active");
+      });
+      active.add(id);
+      btn.classList.add("active");
+    }
+
+// clear description
+if (["mat_alt_desc"].includes(id) && !active.has("mat_alt_desc")) {
+  const el = document.getElementById("materials_which");
+  if (el) el.value = "";
+}
+
+
+// clear digi other input when toggled off
+if (id === "digi_other" && !active.has("digi_other")) {
+  const el = document.getElementById("digi_other");
+  if (el) el.value = "";
+}
+
+
+
+    // prereg NA clears yes/no and contents
+    if (id === "NA") {
+      ["yes2", "no2"].forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+      PREREG_IDS.forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+      active.delete("preregLink_on");
+      const linkBtn = document.querySelector('button[data-id="preregLink_on"]');
+      if (linkBtn) linkBtn.classList.remove("active");
+      const linkIn = document.getElementById("preregLink_input");
+      if (linkIn) linkIn.value = "";
+    }
+    // prereg yes/no clears NA
+    if (id === "yes2" || id === "no2") {
+      active.delete("NA");
+      const b = document.querySelector('button[data-id="NA"]');
+      if (b) b.classList.remove("active");
+    }
+
+    // selecting data_none clears downstream
+    if (id === "data_none" && active.has("data_none")) {
+      [
+        "data_all_public",
+        "data_some_public",
+        "data_on_request",
+        "data_not_public",
+      ].forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+      active.delete("dataLink_on");
+      const dBtn = document.querySelector('button[data-id="dataLink_on"]');
+      if (dBtn) dBtn.classList.remove("active");
+      const dIn = document.getElementById("dataLink_input");
+      if (dIn) dIn.value = "";
+      [
+        "r_consent",
+        "r_ethics",
+        "r_sensitive",
+        "r_secondary_no_ok",
+        "r_other",
+      ].forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+      const dro = document.getElementById("data_reason_other");
+      if (dro) dro.value = "";
+    }
+
+    // clear data sensitive textarea when not selected
+
+    if (!active.has("r_sensitive")) {
+      const el = document.getElementById("data_sensitive_why");
+      if (el) el.value = "";
+    }
+
+    // clear analysis sensitive textarea when not selected
+    if (!active.has("as_r_sensitive")) {
+      const el = document.getElementById("analysis_sensitive_why");
+      if (el) el.value = "";
+    }
+
+    // measures: all vs some
+    if (id === "mat_all_measures" && active.has("mat_all_measures")) {
+      ["mat_some_measures"].forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+    }
+    if (id === "mat_some_measures" && active.has("mat_some_measures")) {
+      ["mat_all_measures"].forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+    }
+
+    // stimuli: all vs some
+    if (id === "mat_all_stimuli" && active.has("mat_all_stimuli")) {
+      ["mat_all_some_stimuli"].forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+    }
+    if (id === "mat_all_some_stimuli" && active.has("mat_all_some_stimuli")) {
+      ["mat_all_stimuli"].forEach((x) => {
+        active.delete(x);
+        const b = document.querySelector(`button[data-id="${x}"]`);
+        if (b) b.classList.remove("active");
+      });
+    }
+
+    // analysis scripts: "No" vs any others
+    if (
+      [
+        "as_code",
+        "as_qual_desc",
+        "as_transcript_example",
+        "as_photos",
+        "as_none",
+      ].includes(id)
+    ) {
+      if (id === "as_none" && active.has("as_none")) {
+        // deselect all specific script options
+        [
+          "as_code",
+          "as_qual_desc",
+          "as_transcript_example",
+          "as_photos",
+        ].forEach((x) => {
+          active.delete(x);
+          const b = document.querySelector(`button[data-id="${x}"]`);
+          if (b) b.classList.remove("active");
+        });
+        // clear downstream inputs and toggles
+        active.delete("analysisLink_on");
+        ["as_r_sensitive", "as_r_other"].forEach((x) => {
+          active.delete(x);
+          const b = document.querySelector(`button[data-id="${x}"]`);
+          if (b) b.classList.remove("active");
+        });
+        [
+          "analysisLink_input",
+          "analysis_reason_other",
+          "analysis_sensitive_why",
+        ].forEach((id2) => {
+          const el = document.getElementById(id2);
+          if (el) el.value = "";
+        });
+      } else {
+        // selecting any specific option clears "No analysis scripts"
+        active.delete("as_none");
+        const b = document.querySelector('button[data-id="as_none"]');
+        if (b) b.classList.remove("active");
+      }
+    }
+
+    // AI: "No" vs any "Yes"  — keep this INSIDE the handler
+    if (["yes_research_ai", "yes_manuscript_ai", "no_AI"].includes(id)) {
+      if (id === "no_AI" && active.has("no_AI")) {
+        ["yes_research_ai", "yes_manuscript_ai"].forEach((x) => {
+          active.delete(x);
+          const b = document.querySelector(`button[data-id="${x}"]`);
+          if (b) b.classList.remove("active");
+        });
+        const t = document.getElementById("ai_details");
+        if (t) t.value = "";
+      } else {
+        active.delete("no_AI");
+        const b = document.querySelector('button[data-id="no_AI"]');
+        if (b) b.classList.remove("active");
+      }
+    }
+
+    render();
+  });
+});
+
+// special toggle buttons for links
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (!(t instanceof HTMLElement)) return;
+
+  // prereg link
+  if (t.matches('button[data-id="preregLink_on"]')) {
+    if (active.has("preregLink_on")) {
+      active.delete("preregLink_on");
+      t.classList.remove("active");
+    } else {
+      if (!txt("preregLink_input")) return;
+      active.add("preregLink_on");
+      t.classList.add("active");
+    }
+    render();
+    return;
+  }
+
+  // data link
+  if (t.matches('button[data-id="dataLink_on"]')) {
+    if (active.has("dataLink_on")) {
+      active.delete("dataLink_on");
+      t.classList.remove("active");
+    } else {
+      if (!txt("dataLink_input")) return;
+      active.add("dataLink_on");
+      t.classList.add("active");
+    }
+    render();
+    return;
+  }
+
+  // analysis link
+  if (t.matches('button[data-id="analysisLink_on"]')) {
+    if (active.has("analysisLink_on")) {
+      active.delete("analysisLink_on");
+      t.classList.remove("active");
+    } else {
+      if (!txt("analysisLink_input")) return;
+      active.add("analysisLink_on");
+      t.classList.add("active");
+    }
+    render();
+    return;
+  }
+});
+
+// re-render on input
+[
+  "preregLink_input",
+  "reg_reason_other",
+  "dataLink_input",
+  "analysisLink_input",
+  "data_reason_other",
+  "data_sensitive_why",
+  "materialsLink_input",
+  "materials_other",
+  "materials_reason_other",
+  "materials_danger_why",
+  "measures_unavail_why",
+  "consent_unavail_why",
+  "stimuli_unavail_why",
+  "analysis_reason_other",
+  "analysis_sensitive_why",
+  "rg_reason_other",
+  "ai_details",
+  "materials_which",
+  "rg_other_name",
+  "digi_other"
+].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("input", render);
+});
+
+render();
+
+// restart button
+const restartWrap = document.getElementById("restartWrap");
+const restartBtn = document.getElementById("restartBtn");
+
+function showRestart() {
+  if (!restartWrap) return;
+  restartWrap.style.display = "";
+  restartWrap.classList.remove("hidden");
+}
+
+restartBtn.addEventListener("click", (e) => {
+  // clear selections
+  active.clear();
+  document
+    .querySelectorAll("button[data-id]")
+    .forEach((b) => b.classList.remove("active"));
+
+  // clear text inputs
+  [
+    "preregLink_input",
+    "reg_reason_other",
+    "dataLink_input",
+    "analysisLink_input",
+    "data_reason_other",
+    "data_sensitive_why",
+    "materials_other",
+    "materials_reason_other",
+    "materials_danger_why",
+    "measures_unavail_why",
+    "consent_unavail_why",
+    "stimuli_unavail_why",
+    "analysis_reason_other",
+    "analysis_sensitive_why",
+    "rg_reason_other",
+    "materialsLink_input",
+    "ai_details",
+    "materials_which",
+    "rg_other_name",
+    "digi_other"
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+
+  // clear output
+  outEl.innerHTML = "";
+
+  // hide conditional sections but keep restart visible
+  document
+    .querySelectorAll(".section:not(#restartWrap)")
+    .forEach((sec) => sec.classList.add("hidden"));
+
+  // hide restart until next interaction
+  restartWrap.style.display = "none";
+
+  // recompute visibility from a clean slate
+  render();
+});
+
+// re-show on any builder interaction
+document.addEventListener("click", (e) => {
+  if (e.target.closest("button[data-id]")) showRestart();
+});
+document.addEventListener("input", (e) => {
+  if (e.target.matches('input[type="text"], textarea')) showRestart();
+});
+  </script>
+</body>
+</html>
 
